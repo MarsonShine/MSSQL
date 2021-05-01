@@ -45,3 +45,11 @@ mysql> select * from t1 join t2 using(ID) where t1.c = 10 and c2.d = 20;
 - InnoDB 引擎接口取这个表的第一行，判断是否符合查询条件，如果不是就会跳过，是就会存到结果集中；
 - 继续取下一行，重复相同的判断，直到最后一行；
 - 将结果集作为结果返回客户端；
+
+## 数据恢复
+
+MySQL 内部采用 [WAL（预写日志）](https://github.com/MarsonShine/MS.Microservice/blob/master/docs/patterns-of-distributed-systems/Write-Ahead-Log.md) 做到数据恢复的，依靠的是 redo log 和 bin log。redo log 是 InnoDB 引擎特有的物理日志；bin log 是逻辑日志，属于 MySQL 默认引擎内置的日志。**redo log 记录的是 “在某个数据页上做了什么修改”；bin log 记录的是 SQL 语句的原始逻辑，比如 “给 ID=2 的一行数据的列 C 加 1”。**
+
+![](asserts/2e5bff4910ec189fe1ee6e2ecc7b4bbe.png)
+
+​																				此图出自即刻时间《MySQL 45讲实战》
