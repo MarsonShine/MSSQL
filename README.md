@@ -38,7 +38,25 @@ select @a/@b;
 mysql global status;
 ```
 
+## Count 不同用法的性能差异
 
+```mysql
+select count(*) from table;
+select count(主键id) from table;
+select count(1) from table;
+select count(列字段) from table;
+```
+
+count() 是一个聚合函数，**对于返回的结果集要一行行地判断，如果 count 函数的参数不是 null，累加值+1，否则不加。最后返回这个累加值。**
+
+- select(主键id)：会遍历整张表，每一行的主键都取出来，返回 server 层。server 层拿到 id 后，判断不为 null 的累加值 +1
+- count(1): 遍历整张表，但不取值。server 层直接返回每一行，直接累加值 +1
+- count(字段)：遍历整张表，取对应的字段，返回 server 层。server 判断该值是否 null，决定累加值 +1
+- count(*): MySQL 内部做了优化，不取值，直接按行取值累计值 +1
+
+性能比较：
+
+count(*) 约等于 count(1) > count(主键id) > count(字段)
 
 ## 文章导航
 
