@@ -20,6 +20,26 @@
 
 在 MYSQL 8.0 之前还有一个字增长的问题，那就是**字增长不会持久化**，自增值可能会存在回溯问题：在表中有三条记录，我们删除三条表，由于字增长特性，我们再添加一条数据，次数的主键值为 4。但是如果在删除后添加前，mysql 发生了故障重启了，那么这个时候我们新增一条记录主键值是 3。
 
+## MySQL 参数配置查询
+
+flush 会导致刷脏页，即将 MySQL 会把内存的数据同步写入到磁盘中，这个过程就称为 flush，这是很耗内存的。
+
+脏页比例是通过 `Innodb_buffer_pool_pages_dirty/Innodb_buffer_pool_pages_dirty` 计算出来的
+
+```mysql
+select VARIABLE_VALUE into @a from global_status where VARIABLE_NAME = 'Innodb_buffer_pool_pages_dirty';
+select VARIABLE_VALUE into @b from global_status where VARIABLE_NAME = 'Innodb_buffer_pool_pages_total';
+select @a/@b;
+```
+
+显示变量状态参数
+
+```mysql
+mysql global status;
+```
+
+
+
 ## 文章导航
 
 [包含列的索引（mssql-index-include）](src/docs/mssql-index-include.md)
