@@ -1,6 +1,10 @@
 # MSSQL
 数据库相关问题学习补充
 
+## 文章导航
+
+[包含列的索引（mssql-index-include）](src/docs/mssql-index-include.md)
+
 # MYSQL
 
 ## 在设计主键的时候应该注意什么？
@@ -38,6 +42,32 @@ select @a/@b;
 mysql global status;
 ```
 
+查看 SQL 执行进程的情况，可以查看当前语句执行处于什么状态：
+
+```mysql
+show processlist;  -- 显示进程相关的信息，id，当前状态 state, info 等
+```
+
+也可以通过查询具体的 process_id 的信息：
+
+```mysql
+mysql> select * from information_schema.processlist where id = 1;
+```
+
+通过查询 `sys.schema_table_lock_waits` 就可以查出造成阻塞的 process_id，找出来 kill 掉
+
+```mysql
+mysql> select blocking_pid from sys.schema_table_lock_waits;
+```
+
+MySQL 5.7 版本可以通过 `sys.innodb_lock_waits` 查询出谁在占用锁：
+
+```mysql
+mysql> select * from sys.innodb_lock_waits where locked_table = `'test'.'t'`;
+```
+
+
+
 ## Count 不同用法的性能差异
 
 ```mysql
@@ -57,8 +87,4 @@ count() 是一个聚合函数，**对于返回的结果集要一行行地判断�
 性能比较：
 
 count(*) 约等于 count(1) > count(主键id) > count(字段)
-
-## 文章导航
-
-[包含列的索引（mssql-index-include）](src/docs/mssql-index-include.md)
 
