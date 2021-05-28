@@ -88,3 +88,55 @@ count() 是一个聚合函数，**对于返回的结果集要一行行地判断�
 
 count(*) 约等于 count(1) > count(主键id) > count(字段)
 
+## UUID 与 自增长 ID 的选择
+
+其实我们在做分布式应用时，我们在选择主键的类型选择时，绝大多数都会在 UUID 和分布式 Id（如 facebook 的雪花 Id） 中选择。UUID 生成规则其实与雪花Id这种分布式Id类似。UUID 的生成规则如下
+
+```
+UUID = 时间低（4字节）- 时间中高+版本（4字节）- 始终序列 - MAC地址
+```
+
+它的生成规则就注定它天生就是带有分布式性质的。前 8 个字节中的 60 位用于存储时间，4 位存储 UUID 的版本号，这个时间是从 1582-10-15 00:00:00 到现在的 100 ns 的计数。
+
+而且要注意，存储时间位时，时逆序的。时间低的放在前面。所以并不是单调递增的。**非随机值在插入时会产生离散 I/O**，从而产生性能瓶颈。这是人们对于选择 UUID 做为主键最大的顾虑。
+
+而 MySQL 为了解决这个问题，8.0 推出了函数 `UUID_TO_BIN`，它可以对 UUID 字符串进行以下处理：
+
+- **通过参数讲时间高位放在最前面，解决了 UUID 插入时序乱问题。**
+- 去掉无用的字符串 "-"，精简存储空间。
+- **将字符串转换期二进制存储，空间最终从之前的 36 个字节缩短成 16 个字节。**
+
+那么在 MySQL8.0 之前该怎么解决呢？
+
+```mysql
+CREATE FUNCTION MY_UUID_TO_BIN(_uuid BINARY(36))
+    RETURNS BINARY(16)
+    LANGUAGE SQL  DETERMINISTIC  CONTAINS SQL  SQL SECURITY INVOKER
+    RETURN
+        UNHEX(CONCAT(
+            SUBSTR(_uuid, 15, 4),
+            SUBSTR(_uuid, 10, 4),
+            SUBSTR(_uuid,  1, 8),
+            SUBSTR(_uuid, 20, 4),
+            SUBSTR(_uuid, 25) ));
+
+CREATE FUNCTION MY_BIN_TO_UUID(_bin BINARY(16))
+    RETURNS  CHAR(36)
+    LANGUAGE SQL  DETERMINISTIC  CONTAINS SQL  SQL SECURITY INVOKER
+    RETURN
+		LCASE(CONCAT_WS('-',
+		HEX(SUBSTR(_bin,  5, 4)),
+		HEX(SUBSTR(_bin,  3, 2)),
+		HEX(SUBSTR(_bin,  1, 2)),
+		HEX(SUBSTR(_bin,  9, 2)),
+		HEX(SUBSTR(_bin, 11)) ));
+
+```
+
+UUID 缺点：
+
+- UUID 可读性差，不带有业务属性
+- 分布式数据库下，可能会存在重复的 UUID（联想生成规则）
+
+在选择时我们还可以选择第三方生成机制，如 redis 自增以及 zookeeper 拨号机制来生成主键（分段+二级/三级缓存提升并发性能），又如 mongodb 的 objectid 也是 12 字节全局唯一的。
+
